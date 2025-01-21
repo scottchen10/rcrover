@@ -36,6 +36,13 @@ const struct{
 // Simple Driving as Motors are weak
 class MotorDriverController{
   public:
+    enum DriveDirection {
+      LEFT,
+      RIGHT,
+      FWD,
+      BWD
+    };
+
     MotorDirectionParams MotorDirection;
 
     void Initialize() {
@@ -47,31 +54,32 @@ class MotorDriverController{
       pinMode(MOTOR_DRIVER_PINS.RInputB, OUTPUT);
     };
 
-    void TurnInPlace(bool isLeftTurn) {
-      const uint8_t *leftDirection = (isLeftTurn) ? MotorDirection.BWDLeft: MotorDirection.FWDLeft;
-      const uint8_t *rightDirection = (isLeftTurn) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
+    void TurnInPlace(DriveDirection turnDirection) {
+      const uint8_t *leftDirection = (turnDirection == LEFT) ? MotorDirection.BWDLeft: MotorDirection.FWDLeft;
+      const uint8_t *rightDirection = (turnDirection == LEFT) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
       
       drive(&leftDirection, 255, &rightDirection, 255);
     }
 
-    void MovingTurn(bool isLeftTurn, bool isFWD) {
+    void MovingTurn(DriveDirection turnDirection, DriveDirection lateralDirection) {
       const uint8_t *leftDirection;
       const uint8_t *rightDirection;    
+      bool isMovingLeft = turnDirection == LEFT;
 
-      if (isFWD) {
-        leftDirection = (isLeftTurn) ? MotorDirection.Brake: MotorDirection.FWDLeft;
-        rightDirection = (isLeftTurn) ? MotorDirection.FWDRight: MotorDirection.Brake;
+      if (lateralDirection == FWD) {
+        leftDirection = (isMovingLeft) ? MotorDirection.Brake: MotorDirection.FWDLeft;
+        rightDirection = (isMovingLeft) ? MotorDirection.FWDRight: MotorDirection.Brake;
       } else {
-        leftDirection = (isLeftTurn) ?MotorDirection.Brake: MotorDirection.BWDRight;
-        rightDirection = (isLeftTurn) ? MotorDirection.BWDLeft: MotorDirection.Brake;
+        leftDirection = (isMovingLeft) ?MotorDirection.Brake: MotorDirection.BWDRight;
+        rightDirection = (isMovingLeft) ? MotorDirection.BWDLeft: MotorDirection.Brake;
       }
 
       drive(&leftDirection, 255, &rightDirection, 255);      
     };
 
-    void Move(bool isFWD) {
-      const uint8_t *leftDirection = (isFWD) ? MotorDirection.FWDLeft: MotorDirection.BWDRight;
-      const uint8_t *rightDirection = (isFWD) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
+    void Move(bool lateralDirection) {
+      const uint8_t *leftDirection = (lateralDirection == FWD) ? MotorDirection.FWDLeft: MotorDirection.BWDRight;
+      const uint8_t *rightDirection = (lateralDirection == FWD) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
 
       drive(&leftDirection, 255, &rightDirection, 255);   
     }
@@ -92,14 +100,14 @@ class MotorDriverController{
     };
 };
 
-MotorDriverController MotorDriverControl(MotorDirectionParams(LOW, HIGH, HIGH, LOW));
+MotorDriverController MotorControl(MotorDirectionParams(LOW, HIGH, HIGH, LOW));
 
 void setup() {
-  MotorDriverControl.Initialize();
+  MotorControl.Initialize();
   Serial.begin(115200);
 }
 
 void loop() {
-  MotorDriverControl.MovingTurn(false, true);
+  MotorControl.MovingTurn(MotorControl.LEFT, MotorControl.FWD);
   delay(5000);
 }
