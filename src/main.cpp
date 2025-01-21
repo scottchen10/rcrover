@@ -1,23 +1,26 @@
 #include <Arduino.h>
 
-const uint8_t MOTOR_BRAKE[2] = {LOW, LOW};
-
 struct MotorDirectionParams {
-  uint8_t* FWDLeft[2];
-  uint8_t* FWDRight[2];
-  uint8_t* BWDLeft[2];
-  uint8_t* BWDRight[2];
+  uint8_t FWDLeft[2];
+  uint8_t FWDRight[2];
+  uint8_t BWDLeft[2];
+  uint8_t BWDRight[2];
+
+  uint8_t Brake[2] = {LOW, LOW};
   
   MotorDirectionParams(uint8_t lInputA, uint8_t lInputB, uint8_t rInputA, uint8_t rInputB) {
-    (*FWDLeft)[0] = lInputA;
-    (*FWDLeft)[1] = lInputB;
-    (*BWDLeft)[0] = lInputB;
-    (*BWDLeft)[1] = lInputA;
+    FWDLeft[0] = lInputA;
+    FWDLeft[1] = lInputB;
+    BWDLeft[0] = lInputB;
+    BWDLeft[1] = lInputA;
+    FWDRight[0] = rInputA;
+    FWDRight[1] = rInputB;
+    BWDRight[0] = rInputB;
+    BWDRight[1] = rInputA;
+  };
 
-    (*FWDRight)[0] = rInputA;
-    (*FWDRight)[1] = rInputB;
-    (*BWDRight)[0] = rInputB;
-    (*BWDRight)[1] = rInputA;
+  MotorDirectionParams() {
+
   };
 };
 
@@ -30,6 +33,7 @@ const struct{
   int RInputB = 2;
 } MOTOR_DRIVER_PINS;
 
+// Simple Driving as Motors are weak
 class MotorDriverController{
   public:
     MotorDirectionParams MotorDirection;
@@ -44,8 +48,8 @@ class MotorDriverController{
     };
 
     void TurnInPlace(bool isLeftTurn) {
-      uint8_t *leftDirection = (isLeftTurn) ? MotorDirection.BWDLeft: MotorDirection.FWDLeft;
-      uint8_t *rightDirection = (isLeftTurn) ? MotorDirection.BWDRight: MotorDirection.FWDRight;
+      const uint8_t *leftDirection = (isLeftTurn) ? MotorDirection.BWDLeft: MotorDirection.FWDLeft;
+      const uint8_t *rightDirection = (isLeftTurn) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
       
       drive(&leftDirection, 255, &rightDirection, 255);
     }
@@ -55,19 +59,29 @@ class MotorDriverController{
       const uint8_t *rightDirection;    
 
       if (isFWD) {
-        
+        leftDirection = (isLeftTurn) ? MotorDirection.Brake: MotorDirection.FWDLeft;
+        rightDirection = (isLeftTurn) ? MotorDirection.FWDRight: MotorDirection.Brake;
+      } else {
+        leftDirection = (isLeftTurn) ?MotorDirection.Brake: MotorDirection.BWDRight;
+        rightDirection = (isLeftTurn) ? MotorDirection.BWDLeft: MotorDirection.Brake;
       }
 
-
-      drive(&leftDirection, &rightDirection);      
+      drive(&leftDirection, 255, &rightDirection, 255);      
     };
+
+    void Move(bool isFWD) {
+      const uint8_t *leftDirection = (isFWD) ? MotorDirection.FWDLeft: MotorDirection.BWDRight;
+      const uint8_t *rightDirection = (isFWD) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
+
+      drive(&leftDirection, 255, &rightDirection, 255);   
+    }
 
     MotorDriverController(MotorDirectionParams motorDirection) {
       MotorDirection = motorDirection;
     };
 
   private:
-    void drive(const uint8_t*  leftDirection[2], const uint8_t leftPower, const uint8_t* rightDirection[2], const uint8_t rightPower) {
+    void drive(const uint8_t*  leftDirection[2], uint8_t leftPower, const uint8_t* rightDirection[2], uint8_t rightPower) {
       analogWrite(MOTOR_DRIVER_PINS.LEnable, leftPower);
       digitalWrite(MOTOR_DRIVER_PINS.LInputA, (*leftDirection)[0]);
       digitalWrite(MOTOR_DRIVER_PINS.LInputB, (*leftDirection)[1]);
@@ -78,21 +92,14 @@ class MotorDriverController{
     };
 };
 
-MotorDriverController MotorDriverControl(MotorDirectionParams(HIGH, LOW, LOW, HIGH));
+MotorDriverController MotorDriverControl(MotorDirectionParams(LOW, HIGH, HIGH, LOW));
 
 void setup() {
   MotorDriverControl.Initialize();
-  
-  analogWrite(MOTOR_DRIVER_PINS.REnable, 255);
-  digitalWrite(MOTOR_DRIVER_PINS.RInputA, HIGH);
-  digitalWrite(MOTOR_DRIVER_PINS.RInputB, LOW);
-
-  analogWrite(MOTOR_DRIVER_PINS.REnable, 255);
-  digitalWrite(MOTOR_DRIVER_PINS.RInputA, HIGH);
-  digitalWrite(MOTOR_DRIVER_PINS.RInputB, LOW);
-
   Serial.begin(115200);
 }
 
 void loop() {
+  MotorDriverControl.MovingTurn(false, true);
+  delay(5000);
 }
