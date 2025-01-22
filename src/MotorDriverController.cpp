@@ -15,6 +15,7 @@ MotorDirectionSignals& MotorDirectionSignals::addRightFWDSignal(uint8_t rInputA,
     FWDRight[1] = rInputB;
     BWDRight[0] = rInputB;
     BWDRight[1] = rInputA;
+    return *this;
 };
 
 MotorDriverPins& MotorDriverPins::addLeftPins(uint8_t LEnable, uint8_t LInputA, uint8_t LInputB) {
@@ -67,8 +68,8 @@ void MotorDriverController::MovingTurn(DriveDirection turnDirection, DriveDirect
     drive(&leftDirection, 255, &rightDirection, 255);      
 };
 
-void MotorDriverController::Move(bool lateralDirection) {
-    const uint8_t *leftDirection = (lateralDirection == FWD) ? MotorDirection.FWDLeft: MotorDirection.BWDRight;
+void MotorDriverController::Move(DriveDirection lateralDirection) {
+    const uint8_t *leftDirection = (lateralDirection == FWD) ? MotorDirection.FWDLeft: MotorDirection.BWDLeft;
     const uint8_t *rightDirection = (lateralDirection == FWD) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
 
     drive(&leftDirection, 255, &rightDirection, 255);   
