@@ -69,6 +69,12 @@ void MotorDriverController::MovingTurn(DriveDirection turnDirection, DriveDirect
 };
 
 void MotorDriverController::Move(DriveDirection lateralDirection) {
+    if (lateralDirection == BRAKE) {
+        const uint8_t* brake = MotorDirection.Brake;
+        drive(&brake, 0, &brake, 0);
+        return;
+    }
+
     const uint8_t *leftDirection = (lateralDirection == FWD) ? MotorDirection.FWDLeft: MotorDirection.BWDLeft;
     const uint8_t *rightDirection = (lateralDirection == FWD) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
 

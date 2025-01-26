@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include <Arduino.h>
 
 struct MotorDirectionSignals {
@@ -33,10 +34,11 @@ struct MotorDriverPins {
 class MotorDriverController{
   public:
     enum DriveDirection {
+      BRAKE,
+      FWD,
+      BWD,
       LEFT,
       RIGHT,
-      FWD,
-      BWD
     };
     MotorDriverPins MotorPins;
     MotorDirectionSignals MotorDirection;
