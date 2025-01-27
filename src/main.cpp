@@ -46,19 +46,13 @@ void loop() {
 
     MotorDriverController::DriveDirection turnDirection = moveCommand.TurnDirection;
     MotorDriverController::DriveDirection lateralDirecion = moveCommand.LateralDirection;
-    Serial.println(turnDirection);
-    Serial.println(lateralDirecion);
-    Serial.println(MotorControl.BRAKE);
-    if ((turnDirection != MotorControl.BRAKE) and (lateralDirecion != MotorControl.BRAKE)) {\
-      Serial.println("MOVING TURN");
+    if ((turnDirection != MotorControl.BRAKE) and (lateralDirecion != MotorControl.BRAKE)) {
       MotorControl.MovingTurn(turnDirection, lateralDirecion);
     } 
     else if ((turnDirection == MotorControl.BRAKE) and (lateralDirecion != MotorControl.BRAKE)) {
-      Serial.println("FWD/BWD");
       MotorControl.Move(lateralDirecion);
     } 
     else if ((turnDirection != MotorControl.BRAKE) and (lateralDirecion == MotorControl.BRAKE)) {
-      Serial.println("TURN IN PLACE");      
       MotorControl.TurnInPlace(turnDirection);
     } 
     else {
@@ -216,11 +210,8 @@ void setup() {
 void loop() {
   MovementCommandPacket packet;
   thumbstickPos.update();
-  Serial.println("_____________________");
   THUMBSTICK_POSITIONS.setMoveCommandPacket(packet, thumbstickPos);
 
-  Serial.println(packet.LateralDirection);
-  Serial.println(packet.TurnDirection);
 
   radio.write(&packet, sizeof(packet));
 }
