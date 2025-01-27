@@ -4,8 +4,8 @@
 #include <MotorDriverController.h>
 
 struct MovementCommandPacket {
-  MotorDriverController::DriveDirection LateralDirection  = MotorDriverController::DriveDirection::BRAKE;
-  MotorDriverController::DriveDirection TurnDirection = MotorDriverController::DriveDirection::BRAKE;
+  MotorDriverController::DriveDirection LateralDirection  = MotorDriverController::BRAKE;
+  MotorDriverController::DriveDirection TurnDirection = MotorDriverController::BRAKE;
 };
 
 
@@ -32,11 +32,11 @@ void setup() {
   MotorControl.Initialize();
   
   radio.begin();
-  radio.openWritingPipe(RADIO.addresses[1]);
   radio.openReadingPipe(1, RADIO.addresses[0]);
   radio.setPALevel(RF24_PA_MIN);
 
   Serial.begin(115200);
+  radio.startListening();
 };
 
 void loop() {
@@ -46,13 +46,19 @@ void loop() {
 
     MotorDriverController::DriveDirection turnDirection = moveCommand.TurnDirection;
     MotorDriverController::DriveDirection lateralDirecion = moveCommand.LateralDirection;
-    if (turnDirection != MotorControl.BRAKE || lateralDirecion != MotorControl.BRAKE) {
+    Serial.println(turnDirection);
+    Serial.println(lateralDirecion);
+    Serial.println(MotorControl.BRAKE);
+    if ((turnDirection != MotorControl.BRAKE) and (lateralDirecion != MotorControl.BRAKE)) {\
+      Serial.println("MOVING TURN");
       MotorControl.MovingTurn(turnDirection, lateralDirecion);
     } 
-    else if (turnDirection == MotorControl.BRAKE || lateralDirecion != MotorControl.BRAKE) {
+    else if ((turnDirection == MotorControl.BRAKE) and (lateralDirecion != MotorControl.BRAKE)) {
+      Serial.println("FWD/BWD");
       MotorControl.Move(lateralDirecion);
     } 
-    else if (turnDirection != MotorControl.BRAKE || lateralDirecion == MotorControl.BRAKE) {
+    else if ((turnDirection != MotorControl.BRAKE) and (lateralDirecion == MotorControl.BRAKE)) {
+      Serial.println("TURN IN PLACE");      
       MotorControl.TurnInPlace(turnDirection);
     } 
     else {
@@ -103,6 +109,8 @@ class Vector2 {
     return this->x * other->x + this->y * other->y;
   };
 
+  Vector2(): x(0.0f), y(0.0f){};
+
   Vector2(float x, float y){
     this->x = x; 
     this->y = y;
@@ -117,15 +125,77 @@ class ThumbstickPosition: public Vector2{
 
     normalize();
   };
+
+  using Vector2::Vector2;
 };
 
-ThumbstickPosition thumbstickPos;
+ThumbstickPosition thumbstickPos; 
 
 struct {
-  Vector2 UP;
-  Vector2 LEFT;
-  Vector2 TOP_LEFT;
-  Vector2 TOP_RIGHT;
+  Vector2 UP = Vector2(0.0f, 1.0f);
+  Vector2 LEFT = Vector2(1.0f, 0.0f);
+  Vector2 TOP_LEFT = Vector2(0.71f, 0.71f);
+  Vector2 TOP_RIGHT = Vector2(-0.71f, 0.71f);
+
+  void setMoveCommandPacket(MovementCommandPacket &packet, Vector2 &input) {
+    float upDot = input.dot(&UP);
+    float leftDot = input.dot(&LEFT);
+    float topLeftDot = input.dot(&TOP_LEFT);
+    float topRightDot = input.dot(&TOP_RIGHT);
+
+    float upMag = abs(upDot);
+    float leftMag = abs(leftDot);
+    float topRightMag = abs(topRightDot);
+    float topLeftMag = abs(topLeftDot);
+
+    if (upMag > max(max(leftMag, topRightMag), topLeftMag)) {
+      packet.TurnDirection = MotorDriverController::BRAKE;
+
+      if (upDot > 0) {
+        packet.LateralDirection = MotorDriverController::FWD;        
+      } else {
+        packet.LateralDirection = MotorDriverController::BWD;        
+      }
+
+      return;
+    }
+    else if (leftMag > max(max(upMag, topRightMag), topLeftMag)) {
+      packet.LateralDirection = MotorDriverController::BRAKE;
+
+      if (leftDot > 0) {
+        packet.TurnDirection = MotorDriverController::LEFT;        
+      } else {
+        packet.TurnDirection = MotorDriverController::RIGHT;        
+      }
+
+      return;
+    }
+    else if (topRightMag > max(max(upMag, leftMag), topLeftMag)) {
+      if (topRightMag > 0) {
+        packet.LateralDirection = MotorDriverController::FWD;
+        packet.TurnDirection = MotorDriverController::RIGHT;        
+      } else {
+        packet.LateralDirection = MotorDriverController::BWD;
+        packet.TurnDirection = MotorDriverController::LEFT;          
+      }
+
+      return;    
+    }
+    else if (topLeftMag > max(max(upMag, leftMag), topRightMag)) {
+      if (topLeftMag > 0) {
+        packet.LateralDirection = MotorDriverController::FWD;
+        packet.TurnDirection = MotorDriverController::LEFT;        
+      } else {
+        packet.LateralDirection = MotorDriverController::BWD;
+        packet.TurnDirection = MotorDriverController::RIGHT;          
+      }
+
+      return;
+    }
+
+    packet.LateralDirection = MotorDriverController::BRAKE;
+    packet.TurnDirection = MotorDriverController::BRAKE;    
+  };
 } THUMBSTICK_POSITIONS;
 
 // Add input thumbstick
@@ -138,17 +208,21 @@ void setup() {
   pinMode(THUMBSTICK.VYPin, INPUT);
 
   radio.begin();
-  radio.openWritingPipe(RADIO.addresses[1]);
-  radio.openReadingPipe(1, RADIO.addresses[0]);
+  radio.openWritingPipe(RADIO.addresses[0]);
+  radio.stopListening();
 }
 
 // UP AND LEFT IS POSITIVE
 void loop() {
+  MovementCommandPacket packet;
   thumbstickPos.update();
   Serial.println("_____________________");
-  Serial.println(thumbstickPos.x);
-  Serial.println(thumbstickPos.y);
-  delay(500);
+  THUMBSTICK_POSITIONS.setMoveCommandPacket(packet, thumbstickPos);
+
+  Serial.println(packet.LateralDirection);
+  Serial.println(packet.TurnDirection);
+
+  radio.write(&packet, sizeof(packet));
 }
 
 #endif
