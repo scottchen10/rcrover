@@ -1,13 +1,13 @@
 #include <Arduino.h>
 #include <RF24.h>
 #include <SPI.h>
-#include <MotorDriverController.h>
+#include <MotorController.h>
+#include <Vector2.h>
 
 struct MovementCommandPacket {
-  MotorDriverController::DriveDirection LateralDirection  = MotorDriverController::BRAKE;
-  MotorDriverController::DriveDirection TurnDirection = MotorDriverController::BRAKE;
+  MotorController::DriveDirection LateralDirection  = MotorController::BRAKE;
+  MotorController::DriveDirection TurnDirection = MotorController::BRAKE;
 };
-
 
 #ifdef NANO328
 const struct {
@@ -18,7 +18,7 @@ const struct {
 
 RF24 radio(RADIO.CE_PIN, RADIO.CSN_PIN);
 
-MotorDriverController MotorControl(
+MotorController MotorControl(
   MotorDirectionSignals()
     .addLeftFWDSignal(LOW, HIGH)
     .addRightFWDSignal(HIGH, LOW),
@@ -26,7 +26,6 @@ MotorDriverController MotorControl(
     .addLeftPins(9, 5, 4)
     .addRightPins(3, 6, 2)
 );
-
 
 void setup() {
   MotorControl.Initialize();
@@ -44,8 +43,8 @@ void loop() {
     MovementCommandPacket moveCommand;
     radio.read(&moveCommand, sizeof(moveCommand));
 
-    MotorDriverController::DriveDirection turnDirection = moveCommand.TurnDirection;
-    MotorDriverController::DriveDirection lateralDirecion = moveCommand.LateralDirection;
+    MotorController::DriveDirection turnDirection = moveCommand.TurnDirection;
+    MotorController::DriveDirection lateralDirecion = moveCommand.LateralDirection;
     if ((turnDirection != MotorControl.BRAKE) and (lateralDirecion != MotorControl.BRAKE)) {
       MotorControl.MovingTurn(turnDirection, lateralDirecion);
     } 
@@ -75,63 +74,25 @@ const struct {
   byte addresses[2][6] = {"00001", "00002"};
 } RADIO;
 
-RF24 radio(RADIO.CE_PIN, RADIO.CSN_PIN);
-
-class Vector2 {
-  public:
-  float x;
-  float y;
-
-  void normalize() {
-    float magnitude = sqrt(x*x + y*y);
-
-    if (magnitude < 0.3) {
-      x = 0;
-      y = 0;
-      return;
-    }
-
-    x = x * 1/magnitude;
-    y = y * 1/magnitude;
-  };
-
-  float dot(float x, float y) {
-    return this->x * x + this->y * y;
-  };
-
-  float dot(Vector2* other) {
-    return this->x * other->x + this->y * other->y;
-  };
-
-  Vector2(): x(0.0f), y(0.0f){};
-
-  Vector2(float x, float y){
-    this->x = x; 
-    this->y = y;
-  }
-};
-
 class ThumbstickPosition: public Vector2{
   public:
-  void update() {
+  void updatePosition() {
     x = ((float)(analogRead(THUMBSTICK.VXPin)) - 512)/512;
     y = ((float)(analogRead(THUMBSTICK.VYPin)) - 512)/512;
-
+    
     normalize();
   };
+  
+  void updateMoveCommandPacket(MovementCommandPacket &packet, Vector2 &input) {
+    struct Direction {
+      float magnitude;
+      MotorController::DriveDirection turnDirection;
+      MotorController::DriveDirection lateralDirection; 
+      
+      Direction(float magnitude, MotorController::DriveDirection turnDirection, MotorController::DriveDirection lateralDirection)
+        :magnitude(magnitude), turnDirection(turnDirection), lateralDirection(lateralDirection) {};
+    };
 
-  using Vector2::Vector2;
-};
-
-ThumbstickPosition thumbstickPos; 
-
-struct {
-  Vector2 UP = Vector2(0.0f, 1.0f);
-  Vector2 LEFT = Vector2(1.0f, 0.0f);
-  Vector2 TOP_LEFT = Vector2(0.71f, 0.71f);
-  Vector2 TOP_RIGHT = Vector2(-0.71f, 0.71f);
-
-  void setMoveCommandPacket(MovementCommandPacket &packet, Vector2 &input) {
     float upDot = input.dot(&UP);
     float leftDot = input.dot(&LEFT);
     float topLeftDot = input.dot(&TOP_LEFT);
@@ -142,59 +103,59 @@ struct {
     float topRightMag = abs(topRightDot);
     float topLeftMag = abs(topLeftDot);
 
-    if (upMag > max(max(leftMag, topRightMag), topLeftMag)) {
-      packet.TurnDirection = MotorDriverController::BRAKE;
+    Direction directions[4] {
+      Direction(
+        upMag, 
+        MotorController::BRAKE,
+        upDot > 0 ? MotorController::FWD: MotorController::BWD
+      ),
+      Direction(
+        leftMag,
+        leftDot > 0 ? MotorController::LEFT: MotorController::RIGHT,
+        MotorController::BRAKE
+      ),
+      Direction(
+        topRightMag,
+        topRightDot > 0 ? MotorController::RIGHT: MotorController::LEFT,
+        topRightDot > 0 ? MotorController::FWD: MotorController::BWD
+      ),
+      Direction(
+        topLeftMag,
+        topLeftDot > 0 ? MotorController::LEFT: MotorController::RIGHT,
+        topLeftDot > 0 ? MotorController::FWD: MotorController::BWD
+      )
+    };
 
-      if (upDot > 0) {
-        packet.LateralDirection = MotorDriverController::FWD;        
-      } else {
-        packet.LateralDirection = MotorDriverController::BWD;        
+    Direction* maxDir = &directions[0];
+    float largestMag = directions[0].magnitude;
+
+    for (int index = 1; index < 4; ++index) {
+      Direction currentDir = directions[index];
+      if (currentDir.magnitude > largestMag) {
+        maxDir = &currentDir;
+        largestMag = currentDir.magnitude;
       }
-
-      return;
     }
-    else if (leftMag > max(max(upMag, topRightMag), topLeftMag)) {
-      packet.LateralDirection = MotorDriverController::BRAKE;
-
-      if (leftDot > 0) {
-        packet.TurnDirection = MotorDriverController::LEFT;        
-      } else {
-        packet.TurnDirection = MotorDriverController::RIGHT;        
-      }
-
-      return;
+    
+    if (largestMag > 0.05f) {
+      packet.LateralDirection = maxDir->lateralDirection;
+      packet.TurnDirection = maxDir->turnDirection;    
+    } else {
+      packet.LateralDirection = MotorController::BRAKE;
+      packet.LateralDirection = MotorController::BRAKE;
     }
-    else if (topRightMag > max(max(upMag, leftMag), topLeftMag)) {
-      if (topRightMag > 0) {
-        packet.LateralDirection = MotorDriverController::FWD;
-        packet.TurnDirection = MotorDriverController::RIGHT;        
-      } else {
-        packet.LateralDirection = MotorDriverController::BWD;
-        packet.TurnDirection = MotorDriverController::LEFT;          
-      }
-
-      return;    
-    }
-    else if (topLeftMag > max(max(upMag, leftMag), topRightMag)) {
-      if (topLeftMag > 0) {
-        packet.LateralDirection = MotorDriverController::FWD;
-        packet.TurnDirection = MotorDriverController::LEFT;        
-      } else {
-        packet.LateralDirection = MotorDriverController::BWD;
-        packet.TurnDirection = MotorDriverController::RIGHT;          
-      }
-
-      return;
-    }
-
-    packet.LateralDirection = MotorDriverController::BRAKE;
-    packet.TurnDirection = MotorDriverController::BRAKE;    
   };
-} THUMBSTICK_POSITIONS;
+  private:
+    Vector2 UP = Vector2(0.0f, 1.0f);
+    Vector2 LEFT = Vector2(1.0f, 0.0f);
+    Vector2 TOP_LEFT = Vector2(0.71f, 0.71f);
+    Vector2 TOP_RIGHT = Vector2(-0.71f, 0.71f);
 
-// Add input thumbstick
-// Get closest direction (l, R, FWD, BWD)
-// Send to Nano
+  using Vector2::Vector2;
+};
+
+RF24 radio(RADIO.CE_PIN, RADIO.CSN_PIN);
+ThumbstickPosition thumbstickPos; 
 
 void setup() {
   Serial.begin(115200);
@@ -206,12 +167,10 @@ void setup() {
   radio.stopListening();
 }
 
-// UP AND LEFT IS POSITIVE
 void loop() {
   MovementCommandPacket packet;
-  thumbstickPos.update();
-  THUMBSTICK_POSITIONS.setMoveCommandPacket(packet, thumbstickPos);
-
+  thumbstickPos.updatePosition();
+  thumbstickPos.updateMoveCommandPacket(packet, thumbstickPos);
 
   radio.write(&packet, sizeof(packet));
 }

@@ -1,4 +1,4 @@
-#include "MotorDriverController.h"
+#include "MotorController.h"
 
 
 MotorDirectionSignals& MotorDirectionSignals::addLeftFWDSignal(uint8_t lInputA, uint8_t lInputB) {
@@ -33,10 +33,7 @@ MotorDriverPins& MotorDriverPins::addRightPins(uint8_t REnable, uint8_t RInputA,
     return *this;
 };
 
-// Abstraction to drive two motors using the L293D driver for a differentially steered model rover type vehicle. 
-// N20 Micro motors are not powerful enough to run without full power. 
-// In the future I may allow for better control of the power of each.
-void MotorDriverController::Initialize() {
+void MotorController::Initialize() {
     pinMode(MotorPins.LEnable, OUTPUT);
     pinMode(MotorPins.LInputA, OUTPUT);
     pinMode(MotorPins.LInputB, OUTPUT);
@@ -45,30 +42,30 @@ void MotorDriverController::Initialize() {
     pinMode(MotorPins.RInputB, OUTPUT);
 };
 
-void MotorDriverController::TurnInPlace(DriveDirection turnDirection) {
+void MotorController::TurnInPlace(DriveDirection turnDirection) {
     const uint8_t *leftDirection = (turnDirection == LEFT) ? MotorDirection.BWDLeft: MotorDirection.FWDLeft;
     const uint8_t *rightDirection = (turnDirection == LEFT) ? MotorDirection.FWDRight: MotorDirection.BWDRight;
     
     drive(&leftDirection, 255, &rightDirection, 255);
 }
 
-void MotorDriverController::MovingTurn(DriveDirection turnDirection, DriveDirection lateralDirection) {
+void MotorController::MovingTurn(DriveDirection turnDirection, DriveDirection lateralDirection) {
     const uint8_t *leftDirection;
     const uint8_t *rightDirection;    
     bool isMovingLeft = turnDirection == LEFT;
 
     if (lateralDirection == FWD) {
-    leftDirection = (isMovingLeft) ? MotorDirection.Brake: MotorDirection.FWDLeft;
-    rightDirection = (isMovingLeft) ? MotorDirection.FWDRight: MotorDirection.Brake;
+        leftDirection = (isMovingLeft) ? MotorDirection.Brake: MotorDirection.FWDLeft;
+        rightDirection = (isMovingLeft) ? MotorDirection.FWDRight: MotorDirection.Brake;
     } else {
-    leftDirection = (isMovingLeft) ? MotorDirection.Brake: MotorDirection.BWDRight;
-    rightDirection = (isMovingLeft) ? MotorDirection.BWDLeft: MotorDirection.Brake;
+        leftDirection = (isMovingLeft) ? MotorDirection.Brake: MotorDirection.BWDRight;
+        rightDirection = (isMovingLeft) ? MotorDirection.BWDLeft: MotorDirection.Brake;
     }
 
     drive(&leftDirection, 255, &rightDirection, 255);      
 };
 
-void MotorDriverController::Move(DriveDirection lateralDirection) {
+void MotorController::Move(DriveDirection lateralDirection) {
     if (lateralDirection == BRAKE) {
         const uint8_t* brake = MotorDirection.Brake;
         drive(&brake, 0, &brake, 0);
@@ -81,12 +78,12 @@ void MotorDriverController::Move(DriveDirection lateralDirection) {
     drive(&leftDirection, 255, &rightDirection, 255);   
 }
 
-MotorDriverController::MotorDriverController(MotorDirectionSignals motorDirection, MotorDriverPins motorPins) {
+MotorController::MotorController(MotorDirectionSignals motorDirection, MotorDriverPins motorPins) {
     MotorPins = motorPins;
     MotorDirection = motorDirection;
 };
 
-void MotorDriverController::drive(const uint8_t*  leftDirection[2], uint8_t leftPower, const uint8_t* rightDirection[2], uint8_t rightPower) {
+void MotorController::drive(const uint8_t*  leftDirection[2], uint8_t leftPower, const uint8_t* rightDirection[2], uint8_t rightPower) {
     analogWrite(MotorPins.LEnable, leftPower);
     digitalWrite(MotorPins.LInputA, (*leftDirection)[0]);
     digitalWrite(MotorPins.LInputB, (*leftDirection)[1]);
