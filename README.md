@@ -15,8 +15,6 @@ A DIY remote-controlled rover for Learning CAD, 3D Printing, and Embedded System
 - [Software](#software)
 - [Getting Started](#getting-started)
 - [CAD Files](#cad-files)
-- [Future Plans](#future-plans)
-- [License](#license)
 
 ## Features
 
