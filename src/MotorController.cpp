@@ -15,6 +15,7 @@ MotorDirectionSignals& MotorDirectionSignals::addRightFWDSignal(uint8_t rInputA,
     FWDRight[1] = rInputB;
     BWDRight[0] = rInputB;
     BWDRight[1] = rInputA;
+    
     return *this;
 };
 
