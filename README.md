@@ -55,32 +55,33 @@ cd rcrover
 ```
 
 ### 2. Assemble the Hardware
-Wire the motor driver, and the NRF24L01 module to any appropriate digital pins on the arduino nano and adjust the pin mapping in code as necessary. 
+- Wire the motor driver, and the NRF24L01 module to any appropriate digital pins on the arduino nano and adjust the pin mapping in code as necessary. 
 
-Ensure a 5V power supply is powering the motor and arduino.
+- Ensure a 5V power supply is powering the motor and arduino.
 
-Assuming the 3D printed chassis is prepared, place the motors in the appropriate spot attached to the drive gear and secure with zip ties as needed.
+- Assuming the 3D printed chassis is prepared, place the motors in the appropriate spot attached to the drive gear and secure with zip ties as needed.
 
-Wire the 2-Axis joystick and another NRF24L01 module to the Arduino Mega 2560 and adjust the pin mapping in the Mega 2560 section of the code.
+- Wire the 2-Axis joystick and another NRF24L01 module to the Arduino Mega 2560 and adjust the pin mapping in the Mega 2560 section of the code.
 
 ### 2. Install PlatformIO
 
-Install PlatformIO IDE in your code editor (VSCode recommended) and open the repository.
+- Install PlatformIO IDE in your code editor (VSCode recommended) and open the repository.
 
 
 ### 3. Upload the Firmware
 
-Connect your Arduino Nano via USB.
+- Connect your Arduino Nano via USB.
 
-Open the project in PlatformIO.
+- Open the project in PlatformIO.
 
-Select the nanoatmega328 environment and flash to the microcontroller
+- Select the nanoatmega328 environment and flash to the microcontroller
 
-Repeat but with the megaatmega2560 environment and the Arduino Mega 2560
+- Repeat but with the megaatmega2560 environment and the Arduino Mega 2560
 
 ### 5. Test the Rover
 
-Power it up and start driving using the joystick!
+- Power it up and start driving using the joystick!
+
 ## CAD Files
 
 All 3D components were designed in OnShape.
