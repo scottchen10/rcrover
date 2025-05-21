@@ -1,6 +1,13 @@
 # rcrover 
 A DIY remote-controlled rover for Learning CAD, 3D Printing, and Embedded Systems
 
+
+<p float="left">
+  <img src="https://github.com/scottchen10/rcrover/blob/main/misc/chassis.jpg?raw=true" alt="Image" height="400" />
+  <img src="https://github.com/scottchen10/rcrover/blob/main/misc/demo.gif?raw=true" alt="GIF" height="400" />
+</p>
+
+
 ## Table of Contents
 
 - [Features](#features)
@@ -58,8 +65,10 @@ cd rcrover
 
 ### 2. Install PlatformIO
 
-Install PlatformIO IDE in your code editor (VSCode recommended).
-3. Upload the Firmware
+Install PlatformIO IDE in your code editor (VSCode recommended) and open the repository.
+
+
+### 3. Upload the Firmware
 
     Connect your Arduino Nano via USB.
 
